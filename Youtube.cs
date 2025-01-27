@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 namespace YoutubeDownloader
@@ -6,66 +7,87 @@ namespace YoutubeDownloader
 	public class Youtube
 	{
 		public string VideoUrl { get; set; } = null!;
+		public string? _fileName { get; set; }
+		public string FileName 
+		{ 
+			get
+			{
+				return RemoveInvalidCharacters(_fileName ?? string.Empty);
+            }
+		}
 		public string AudioFilePath { get; set; } = null!;
 		public string VideoFilePath { get; set; } = null!;
-		public string FinalVideoFilePath { get; set; } = null!;
+		public string FinalVideoFilePath 
+		{ 
+			get 
+			{
+				return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            } 
+		}
+		public VideoDetails? VideoDetails { get; set; }
 		public string ytDlpPath { 
 			get 
 			{ 
 				return "yt-dlp.exe"; 
 			} 
 		}
-
-		public void SetYoutubeUrl()
+        public string ffmpegPath
+		{
+			get
+			{
+				return Path.Combine(Directory.GetCurrentDirectory(), "ffmpeg", "bin", "ffmpeg.exe");
+			}
+		}
+        public void SetYoutubeUrl()
 		{
 			Console.Write("Enter the YouTube video URL:");
 			this.VideoUrl = Console.ReadLine() ?? string.Empty;
 			//this.VideoUrl = $"--no-check-certificate {this.VideoUrl}";
 		}
+		public bool isDeleteAudioFile { get; set; } = false;
 
-		public void GetVideo()
+        public void GetVideo()
 		{
-			FinalVideoFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+			GetVideoDetails();
 
-			try
+            Console.Write("Enter the format code for the desired quality(video): ");
+            var formatCodeVideo = Console.ReadLine();
+
+            Console.Write("Enter the format code for the desired quality(audio): ");
+            var formatCodeAudio = Console.ReadLine();
+
+			var videoDetail = VideoDetails?.Formats?.FirstOrDefault(x => formatCodeVideo == x.FormatId?.Trim().ToLower());
+			var audioDetail = VideoDetails?.Formats?.FirstOrDefault(x => formatCodeAudio == x.FormatId?.Trim().ToLower());
+
+            var outputTempDirectory = Path.Combine(FinalVideoFilePath, "Temp");
+            var finalOutputPath = Path.Combine(FinalVideoFilePath, $"{FileName} ({videoDetail?.Resolution}).mp4");
+            Directory.CreateDirectory(outputTempDirectory);
+
+            VideoFilePath = Path.Combine(FinalVideoFilePath, outputTempDirectory, $"{Guid.NewGuid().ToString("N")}_video.mp4");
+			AudioFilePath = Path.Combine(FinalVideoFilePath, outputTempDirectory, $"{Guid.NewGuid().ToString("N")}_audio.mp3");
+
+            DownloadAsync(formatCodeVideo, VideoFilePath, VideoUrl);
+            DownloadAsync(formatCodeAudio, AudioFilePath, VideoUrl);
+
+            if (File.Exists(VideoFilePath) && File.Exists(AudioFilePath))
+            {
+                Console.WriteLine("\nCombining video and audio...");
+                CombineVideoAndAudio(VideoFilePath, AudioFilePath, finalOutputPath);
+                Console.WriteLine($"Final output: {finalOutputPath}");
+            }
+            else
+            {
+                Console.WriteLine("Failed to download video or audio.");
+            }
+
+            File.Delete(VideoFilePath);
+			if (isDeleteAudioFile)
 			{
-				// Set up the process to call yt-dlp
-				var process = new Process
-				{
-					StartInfo = new ProcessStartInfo
-					{
-						FileName = ytDlpPath,
-						Arguments = $"-f bestvideo+bestaudio -o \"{FinalVideoFilePath}\" {VideoUrl}",
-						RedirectStandardOutput = true,
-						RedirectStandardError = true,
-						UseShellExecute = false,
-						CreateNoWindow = true
-					}
-				};
-
-				// Start the process and capture output
-				process.Start();
-				string output = process.StandardOutput.ReadToEnd();
-				string error = process.StandardError.ReadToEnd();
-				process.WaitForExit();
-
-				if (process.ExitCode == 0)
-				{
-					Console.WriteLine($"Download completed successfully! Saved as {FinalVideoFilePath}");
-				}
-				else
-				{
-					Console.WriteLine("An error occurred:");
-					Console.WriteLine(error);
-				}
+				File.Delete(AudioFilePath);
 			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"An unexpected error occurred: {ex.Message}");
-			}
-		}
+        }
 
-		public void GetVideoDetails()
+		public VideoDetails? GetVideoDetails()
 		{
 			try
 			{
@@ -93,35 +115,32 @@ namespace YoutubeDownloader
 				{
 					Console.WriteLine("Error fetching video details:");
 					Console.WriteLine(errorOutput);
-					return;
+					return VideoDetails;
 				}
 
 				// Step 2: Parse JSON metadata
-				var videoDetails = JsonSerializer.Deserialize<VideoDetails>(metadataJson);
+				VideoDetails = JsonSerializer.Deserialize<VideoDetails>(metadataJson);
 
-				if (videoDetails == null)
+				if (VideoDetails == null)
 				{
 					Console.WriteLine("Failed to parse video metadata. Exiting...");
-					return;
+					return VideoDetails;
 				}
 				else
 				{
+					this._fileName = VideoDetails.Title?.Replace("| ", "").Replace("|","");
+					
 					// Step 3: Display video details
-					Console.WriteLine($"Title: {videoDetails.Title}");
-					Console.WriteLine($"Uploader: {videoDetails.Uploader}");
-					Console.WriteLine($"Duration: {FormatDuration(videoDetails.Duration)}");
+					Console.WriteLine($"Title: {VideoDetails.Title}");
+					Console.WriteLine($"Uploader: {VideoDetails.Uploader}");
+					Console.WriteLine($"Duration: {FormatDuration(VideoDetails.Duration)}");
 					Console.WriteLine("Available Formats:");
 
-					Console.WriteLine("Format ID\t\tType\t\tResolution\t\tCodec\t\tSize");
+					Console.WriteLine("Format ID\tType\t\tResolution\t\t\tCodec");
 
-					videoDetails?.Formats?.ForEach(format =>
+                    VideoDetails?.Formats?.ForEach(format =>
 					{
-						//Console.WriteLine($"- Format ID: {format.FormatId}");
-						//Console.WriteLine($"  Type: {(format.Vcodec == "none" ? "Audio" : "Video")}");
-						//Console.WriteLine($"  Resolution: {format.Resolution}");
-						//Console.WriteLine($"  Codec: {format.Acodec}/{format.Vcodec}");
-						//Console.WriteLine($"  Size: {FormatFileSize(format.Filesize)}");
-						Console.WriteLine($"{format.FormatId}\t {(format.Vcodec == "none" ? "Audio" : "Video")}\t {format.Resolution} \t {format.Acodec}/{format.Vcodec}\t{FormatFileSize(format.Filesize)} ");
+						Console.WriteLine($"{format.FormatId}\t\t {(format.Vcodec == "none" ? "Audio" : "Video")}\t\t {format.Resolution} - {FormatFileSize(format.Filesize)} \t\t {format.Acodec}/{format.Vcodec} ");
 					});
 
 					Console.WriteLine("Use the format ID to select a specific format for download.");
@@ -131,9 +150,75 @@ namespace YoutubeDownloader
 			{
 				Console.WriteLine($"An unexpected error occurred: {ex.Message}");
 			}
-		}
 
-		private static string FormatFileSize(long? size)
+			return VideoDetails;
+        }
+
+        private void DownloadAsync(string formatCode, string filepath, string videoUrl)
+        {
+            Console.WriteLine($"\nDownloading video in format {formatCode}...");
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ytDlpPath,
+                    Arguments = $"-f {formatCode} -o \"{filepath}\" {videoUrl}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            string downloadOutput = process.StandardOutput.ReadToEnd();
+            string downloadError = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (process.ExitCode == 0)
+            {
+                Console.WriteLine($"Download completed successfully! Saved as {filepath}");
+            }
+            else
+            {
+                Console.WriteLine("An error occurred during download:");
+                Console.WriteLine(downloadError);
+            }
+        }
+
+        private void CombineVideoAndAudio(string videoPath, string audioPath, string outputPath)
+        {
+            try
+            {
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = $"-i \"{videoPath}\" -i \"{audioPath}\" -c:v copy -c:a aac \"{outputPath}\" -y",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                string output = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    Console.WriteLine($"FFmpeg error: {output}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while combining video and audio: {ex.Message}");
+            }
+        }
+
+        private static string FormatFileSize(long? size)
 		{
 			if (size == null) return "Unknown";
 			double fileSize = size.Value;
@@ -149,12 +234,34 @@ namespace YoutubeDownloader
 			return $"{fileSize:F2} {suffixes[suffixIndex]}";
 		}
 
-		// Helper to format duration
 		private static string FormatDuration(int? seconds)
 		{
 			if (seconds == null) return "Unknown";
 			TimeSpan time = TimeSpan.FromSeconds(seconds.Value);
 			return time.ToString(@"hh\:mm\:ss");
 		}
-	}
+
+        private static string RemoveInvalidCharacters(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentException("File name cannot be null or empty.", nameof(fileName));
+
+            fileName = fileName.Replace("| ", string.Empty).Replace("|", string.Empty);
+
+            // Define the characters to remove
+            char[] invalidChars = { '/', '\\', ':', '*', '?', '"', '<', '>', '|' };
+
+            var sanitizedFileName = new StringBuilder();
+            foreach (char c in fileName)
+            {
+                // Append only characters not in the invalid character list
+                if (Array.IndexOf(invalidChars, c) == -1)
+                {
+                    sanitizedFileName.Append(c);
+                }
+            }
+
+            return sanitizedFileName.ToString();
+        }
+    }
 }

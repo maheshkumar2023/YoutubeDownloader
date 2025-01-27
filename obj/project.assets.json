@@ -228,24 +228,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\pct219\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\mahes\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Mahesh\\Practices\\YoutubeDownloader\\YoutubeDownloader.csproj",
+      "projectUniqueName": "C:\\Users\\mahes\\Source\\Repos\\YoutubeDownloader\\YoutubeDownloader.csproj",
       "projectName": "YoutubeDownloader",
-      "projectPath": "D:\\Mahesh\\Practices\\YoutubeDownloader\\YoutubeDownloader.csproj",
-      "packagesPath": "C:\\Users\\pct219\\.nuget\\packages\\",
-      "outputPath": "D:\\Mahesh\\Practices\\YoutubeDownloader\\obj\\",
+      "projectPath": "C:\\Users\\mahes\\Source\\Repos\\YoutubeDownloader\\YoutubeDownloader.csproj",
+      "packagesPath": "C:\\Users\\mahes\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\mahes\\Source\\Repos\\YoutubeDownloader\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\pct219\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Users\\mahes\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
