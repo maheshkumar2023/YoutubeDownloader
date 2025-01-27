@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "MLbXhObc3xtxruyN3wHOR2yZgiICh9e5jbE7jdpU86MTffKokqUXJbF+vFk37PucNv6jdi3/NFpxp76dUPpPYg==",
+  "success": true,
+  "projectFilePath": "D:\\Mahesh\\Practices\\YoutubeDownloader\\YoutubeDownloader.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\pct219\\.nuget\\packages\\system.io.pipelines\\9.0.1\\system.io.pipelines.9.0.1.nupkg.sha512",
+    "C:\\Users\\pct219\\.nuget\\packages\\system.text.encodings.web\\9.0.1\\system.text.encodings.web.9.0.1.nupkg.sha512",
+    "C:\\Users\\pct219\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
+    "C:\\Users\\pct219\\.nuget\\packages\\videolibrary\\3.2.7\\videolibrary.3.2.7.nupkg.sha512"
+  ],
+  "logs": []
+}
